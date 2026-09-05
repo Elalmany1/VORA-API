@@ -1,18 +1,21 @@
 import { neon } from '@neondatabase/serverless'
 
 const sql = neon(process.env.DATABASE_URL)
-const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': process.env.FRONTEND_ORIGIN || '*', 'access-control-allow-credentials': 'true' } })
+const allowedOrigins = (process.env.FRONTEND_ORIGIN || '').split(',').map(origin => origin.trim()).filter(Boolean)
+const originFor = req => { const origin = req?.headers.get('origin'); return origin && (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) ? origin : '*' }
+const headersFor = req => ({ 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': originFor(req), 'vary': 'Origin' })
+const json = (data, status = 200, req) => new Response(JSON.stringify(data), { status, headers: headersFor(req) })
 const body = async req => { try { return await req.json() } catch { return {} } }
 const pathParts = req => new URL(req.url).pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean)
 const q = req => Object.fromEntries(new URL(req.url).searchParams.entries())
 
-function cors(req) { if (req.method === 'OPTIONS') return new Response(null, {status: 204, headers:{'access-control-allow-origin':process.env.FRONTEND_ORIGIN||'*','access-control-allow-methods':'GET,POST,PATCH,DELETE,OPTIONS','access-control-allow-headers':'Content-Type,Authorization'}}) }
+function cors(req) { if (req.method === 'OPTIONS') return new Response(null, {status: 204, headers:{...headersFor(req),'access-control-allow-methods':'GET,POST,PATCH,DELETE,OPTIONS','access-control-allow-headers':'Content-Type,Authorization'}}) }
 
 export default async function handler(req) {
   const preflight = cors(req); if (preflight) return preflight
   const p = pathParts(req)
   try {
-    if (p[0] === 'health') return json({ ok: true, service: 'vora-api' })
+    if (p[0] === 'health') return json({ ok: true, service: 'vora-api' }, 200, req)
 
     if (p[0] === 'categories') {
       const rows = await sql`SELECT c.id,c.name,c.slug,c.image_url,c.parent_id,c.active,COUNT(p.id)::int AS product_count FROM categories c LEFT JOIN products p ON p.category_id=c.id AND p.status='PUBLISHED' WHERE c.active=true GROUP BY c.id ORDER BY c.sort_order,c.name`

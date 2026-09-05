@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "scripts": {"dev": "vercel dev"},
+  "scripts": {"dev": "vercel dev", "db:init": "node scripts/init-db.mjs"},
   "dependencies": {"@neondatabase/serverless": "^1.0.2"},
   "devDependencies": {"vercel": "latest"}
 }
