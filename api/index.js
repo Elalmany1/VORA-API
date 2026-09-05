@@ -11,7 +11,7 @@ const q = req => Object.fromEntries(new URL(req.url, 'http://localhost').searchP
 
 function cors(req) { if (req.method === 'OPTIONS') return new Response(null, {status: 204, headers:{...headersFor(req),'access-control-allow-methods':'GET,POST,PATCH,DELETE,OPTIONS','access-control-allow-headers':'Content-Type,Authorization'}}) }
 
-export default async function handler(req) {
+async function handler(req) {
   const preflight = cors(req); if (preflight) return preflight
   const p = pathParts(req)
   try {
@@ -54,4 +54,11 @@ export default async function handler(req) {
 
     return json({message:'Route not found'},404)
   } catch (error) { console.error(error); return json({message:'Internal server error'},500) }
+}
+
+export default async function vercelHandler(req, res) {
+  const response = await handler(req)
+  res.statusCode = response.status
+  response.headers.forEach((value, key) => res.setHeader(key, value))
+  res.end(await response.text())
 }
