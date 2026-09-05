@@ -2,12 +2,12 @@ import { neon } from '@neondatabase/serverless'
 
 const sql = neon(process.env.DATABASE_URL)
 const allowedOrigins = (process.env.FRONTEND_ORIGIN || '').split(',').map(origin => origin.trim()).filter(Boolean)
-const originFor = req => { const origin = req?.headers.get('origin'); return origin && (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) ? origin : '*' }
+const originFor = req => { const headers = req?.headers; const origin = typeof headers?.get === 'function' ? headers.get('origin') : headers?.origin || headers?.Origin; return origin && (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) ? origin : '*' }
 const headersFor = req => ({ 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': originFor(req), 'vary': 'Origin' })
 const json = (data, status = 200, req) => new Response(JSON.stringify(data), { status, headers: headersFor(req) })
 const body = async req => { try { return await req.json() } catch { return {} } }
-const pathParts = req => new URL(req.url).pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean)
-const q = req => Object.fromEntries(new URL(req.url).searchParams.entries())
+const pathParts = req => new URL(req.url, 'http://localhost').pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean)
+const q = req => Object.fromEntries(new URL(req.url, 'http://localhost').searchParams.entries())
 
 function cors(req) { if (req.method === 'OPTIONS') return new Response(null, {status: 204, headers:{...headersFor(req),'access-control-allow-methods':'GET,POST,PATCH,DELETE,OPTIONS','access-control-allow-headers':'Content-Type,Authorization'}}) }
 
